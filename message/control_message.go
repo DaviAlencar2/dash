@@ -25,23 +25,30 @@ func NewControlMessage(operation Operation, topic uint16, payload []byte) *Contr
 // [Tamanho: 4 bytes][Operação: 1 byte][Tópico: 2 bytes][Payload: possivelmente 1017]
 func (c ControlMessage) Encode() []byte {
 	bodySize := 3 + len(c.Payload)
-	data := make([]byte, 4 + bodySize)
+	bytes := make([]byte, 4 + bodySize)
 
-	binary.BigEndian.PutUint32(data[0:4], uint32(bodySize))
+	binary.BigEndian.PutUint32(bytes[0:4], uint32(bodySize))
 
-	data[4] = byte(c.Operation)
-	binary.BigEndian.PutUint16(data[5:7], c.Topic)
+	bytes[4] = byte(c.Operation)
+	binary.BigEndian.PutUint16(bytes[5:7], c.Topic)
 
-	copy(data[7:], c.Payload)
+	copy(bytes[7:], c.Payload)
 
-	return data
+	return bytes
 }
 
 // 
 func DecodeControlMessage(bytes []byte) (*ControlMessage, error) {
 
+	//[Tamanho: 4 bytes][Operação: 1 byte][Tópico: 2 bytes] = 7 bytes
 	if len(bytes) < 7 {
 		return nil, errors.New("mensagem de controle incompleta")
+	}
+
+	bodySize := binary.BigEndian.Uint32(bytes[0:4])
+
+	if len(bytes) - 4 != int(bodySize) {
+		return nil, errors.New("valor declarado e real de tamanho não são iguais")
 	}
 
 	operation, err := NewOperation(bytes[4])
