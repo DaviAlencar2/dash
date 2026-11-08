@@ -1,13 +1,55 @@
 package message
 
-/*
-acho que é bom modelar por enquanto tudo de controle menos a parte de metadata aqui
-acho que protobuf brilha so nesse caso de metadata, de resto acho que é bem parecido com data messages
-aí é bom fazer essa parte do protobuf em conjunto
-upd e get meta sao muito diferentes das outras, tem que definir como delimitar cada broker, cada dado do broker, se vai mandar tudo
-ou so o que mudou, etc
-aqui é fazer uma coisa generica que funciona pra tudo, sem tratar muito os payloads e criar structs auxiliares para tipos especificos
-por exemplo: add precisa tratar a string que vai ser o nome do struct pra nao ficar um bagulho estrnaho com \n e etc
-mesma coisa com os de metadata se pa, o que vai permitir que a gente decidida como tratar essa parte depois (com ou sem protobuf)
-*/
-type ControlMessage struct{}
+import (
+	"encoding/binary"
+	"errors"
+)
+
+// Ainda falta implementar o tamanho max para payload
+type ControlMessage struct{
+	Operation Operation
+	Topic uint16
+	Payload []byte // Debater sobre
+}
+
+
+func NewControlMessage(operation Operation, topic uint16, payload []byte) *ControlMessage{
+	return &ControlMessage{
+		Operation: operation,
+		Topic: topic,
+		Payload: payload,
+	}
+}
+
+
+// [Tamanho: 4 bytes][Operação: 1 byte][Tópico: 2 bytes][Payload: possivelmente 1017]
+func (c ControlMessage) Encode() []byte {
+	bodySize := 3 + len(c.Payload)
+	data := make([]byte, 4 + bodySize)
+
+	binary.BigEndian.PutUint32(data[0:4], uint32(bodySize))
+
+	data[4] = byte(c.Operation)
+	binary.BigEndian.PutUint16(data[5:7], c.Topic)
+
+	copy(data[7:], c.Payload)
+
+	return data
+}
+
+// 
+func DecodeControlMessage(bytes []byte) (*ControlMessage, error) {
+
+	if len(bytes) < 7 {
+		return nil, errors.New("mensagem de controle incompleta")
+	}
+
+	operation, err := NewOperation(bytes[4])
+	if err != nil {
+		return nil, err
+	}
+	
+	topic := binary.BigEndian.Uint16(bytes[5:7])
+
+	return NewControlMessage(operation, topic, bytes[7:]), nil
+}
