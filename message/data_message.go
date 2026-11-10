@@ -20,7 +20,7 @@ func NewMessage(operation Operation, topic uint16, payload string) *DataMessage 
 	}
 }
 
-func Decode(bytes []byte) (*DataMessage, error) {
+func DecodeDataMessage(bytes []byte) (*DataMessage, error) {
 	operation, err := NewOperation(bytes[0])
 	if err != nil {
 		return nil, err
