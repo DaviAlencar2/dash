@@ -1,5 +1,7 @@
 package message
 
+import "fmt"
+
 type Operation uint8
 
 const (
